@@ -1,0 +1,79 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+dist-ssr/
+
+# Tauri/Rust build output
+src-tauri/target/
+target/
+
+# Generated installers and app bundles
+src-tauri/target/**/bundle/
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.msi
+*.exe
+*.app
+
+# Local SQLite databases and runtime data
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+*.backup
+*.bak
+backups/
+data/
+app-data/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Logs and reports
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+.nyc_output/
+
+# TypeScript/Vite cache
+*.tsbuildinfo
+.vite/
+
+# Rust/editor temp files
+**/*.rs.bk
+*.tmp
+*.temp
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep lockfiles in git for reproducible builds
+!package-lock.json
+!src-tauri/Cargo.lock
