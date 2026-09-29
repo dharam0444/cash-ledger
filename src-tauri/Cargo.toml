@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Offline cash deposit and withdrawal ledger desktop application"
 authors = ["Cash Ledger"]
 edition = "2021"
+default-run = "offline-cash-ledger"
 
 [lib]
 name = "offline_cash_ledger_lib"

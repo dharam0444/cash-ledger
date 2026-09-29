@@ -68,6 +68,11 @@ export function App() {
         appDate={appDate}
         dbStatus={bootState.dbStatus}
         settings={bootState.settings}
+        onSetupComplete={async () => {
+          const dbStatus = await invoke<DbStatus>("initialize_app");
+          const settings = await invoke<AppSettings>("get_settings");
+          setBootState({ status: "ready", dbStatus, settings });
+        }}
         onLogin={setUser}
       />
     );

@@ -334,7 +334,6 @@ export function DashboardPage({ appDate, user, settings, onLogout }: Props) {
           <button type="button" className={page === "customers" ? "active-tab" : ""} onClick={openCustomers}>Customers</button>
           <button type="button" className={page === "cash-management" ? "active-tab" : ""} onClick={openCashManagement}>Cash Management</button>
           <button type="button" className={page === "report" ? "active-tab" : ""} onClick={openReport}>End Day Report</button>
-          {!licenseStatus?.isActivated ? <button type="button" className={page === "setup" ? "active-tab" : ""} onClick={() => setPage("setup")}>Setup</button> : null}
           <button type="button" className="header-add-button" onClick={() => startCreate(searchQuery)}>+ Add Customer</button>
         </nav>
 

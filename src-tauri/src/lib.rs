@@ -32,7 +32,8 @@ pub fn run() {
             commands::get_daily_transactions,
             commands::get_daily_report,
             commands::get_license_status,
-            commands::complete_client_setup
+            commands::complete_client_setup,
+            commands::reset_admin_password
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cash Ledger");
