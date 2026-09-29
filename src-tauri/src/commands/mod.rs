@@ -21,6 +21,23 @@ pub fn auth_login(
     auth_service::login(&connection, input)
 }
 
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PasswordResetInput {
+    pub machine_code: String,
+    pub recovery_code: String,
+    pub new_password: String,
+}
+
+#[tauri::command]
+pub fn reset_admin_password(
+    database: State<'_, Database>,
+    input: PasswordResetInput,
+) -> AppResult<()> {
+    let connection = database.lock()?;
+    auth_service::reset_admin_password(&connection, &input.machine_code, &input.recovery_code, &input.new_password)
+}
+
 #[tauri::command]
 pub fn get_settings(database: State<'_, Database>) -> AppResult<settings_service::AppSettings> {
     let connection = database.lock()?;

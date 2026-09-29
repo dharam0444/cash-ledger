@@ -70,7 +70,9 @@ pub fn complete_client_setup(
 
     let (password_hash, password_salt) = security::hash_password(admin_password)?;
     connection.execute(
-        "UPDATE users SET password_hash = ?1, password_salt = ?2 WHERE username = 'admin'",
+        "INSERT INTO users (username, password_hash, password_salt, full_name, role, created_at)
+         VALUES ('admin', ?1, ?2, 'Administrator', 'ADMIN', datetime('now'))
+         ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, password_salt = excluded.password_salt",
         params![password_hash, password_salt],
     )?;
 
@@ -110,7 +112,7 @@ fn validate_license_key(machine_code: &str, license_key: &str) -> bool {
     normalize_license(license_key) == normalize_license(&generate_license_for_machine(machine_code))
 }
 
-fn machine_code() -> String {
+pub fn machine_code() -> String {
     let mut hasher = Sha256::new();
     for key in ["COMPUTERNAME", "HOSTNAME", "USERNAME", "USER"] {
         if let Ok(value) = std::env::var(key) {
@@ -125,6 +127,16 @@ fn machine_code() -> String {
     hasher.update(std::env::consts::ARCH.as_bytes());
     let hex = hex::encode(hasher.finalize()).to_uppercase();
     format!("{}-{}-{}", &hex[0..6], &hex[6..12], &hex[12..18])
+}
+
+pub fn validate_recovery_code(machine: &str, code: &str) -> bool {
+    let mut hasher = Sha256::new();
+    hasher.update(VENDOR_LICENSE_SECRET.as_bytes());
+    hasher.update(b"|RECOVERY|");
+    hasher.update(machine.trim().to_uppercase().as_bytes());
+    let hex = hex::encode(hasher.finalize()).to_uppercase();
+    let expected = format!("{}-{}-{}-{}", &hex[0..8], &hex[8..16], &hex[16..24], &hex[24..32]);
+    normalize_license(code) == normalize_license(&expected)
 }
 
 fn normalize_license(value: &str) -> String {

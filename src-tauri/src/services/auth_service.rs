@@ -1,6 +1,7 @@
 use crate::errors::{AppError, AppResult};
 use crate::repositories::user_repository;
 use crate::security;
+use crate::repositories::settings_repository;
 use rusqlite::{params, Connection};
 
 #[derive(Debug, serde::Deserialize)]
@@ -20,23 +21,47 @@ pub struct AuthenticatedUser {
 }
 
 pub fn ensure_default_admin(connection: &Connection) -> AppResult<()> {
-    let user_count: i64 =
-        connection.query_row("SELECT COUNT(*) FROM users", [], |row| row.get(0))?;
-    if user_count > 0 {
-        return Ok(());
-    }
+    // The first admin is created by the first-run setup screen. Never create a
+    // predictable default password here.
+    Ok(())
+}
 
-    let (password_hash, password_salt) = security::hash_password("admin123")?;
-    connection.execute(
-        "INSERT INTO users (username, password_hash, password_salt, full_name, role, created_at)
-         VALUES (?1, ?2, ?3, 'Administrator', 'ADMIN', datetime('now'))",
-        params!["admin", password_hash, password_salt],
+pub fn reset_admin_password(
+    connection: &Connection,
+    machine_code: &str,
+    recovery_code: &str,
+    new_password: &str,
+) -> AppResult<()> {
+    if !crate::services::license_service::validate_recovery_code(machine_code, recovery_code) {
+        return Err(AppError::Validation("Invalid or expired recovery code.".to_string()));
+    }
+    let normalized_code = recovery_code
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .collect::<String>()
+        .to_uppercase();
+    if settings_repository::get_value(connection, "used_recovery_code")?.as_deref()
+        == Some(normalized_code.as_str())
+    {
+        return Err(AppError::Validation("This recovery code has already been used.".to_string()));
+    }
+    let password = new_password.trim();
+    if password.len() < 6 {
+        return Err(AppError::Validation("Password must be at least 6 characters.".to_string()));
+    }
+    let (hash, salt) = security::hash_password(password)?;
+    let updated = connection.execute(
+        "UPDATE users SET password_hash = ?1, password_salt = ?2 WHERE username = 'admin' AND role = 'ADMIN'",
+        params![hash, salt],
     )?;
+    if updated == 0 {
+        return Err(AppError::Validation("Admin account has not been set up yet.".to_string()));
+    }
     connection.execute(
-        "INSERT INTO audit_logs (action, entity_type, description, created_at)
-         VALUES ('USER_CREATED', 'USER', 'Default admin user created during first launch.', datetime('now'))",
+        "INSERT INTO audit_logs (action, entity_type, description, created_at) VALUES ('PASSWORD_RESET', 'USER', 'Admin password reset using recovery code.', datetime('now'))",
         [],
     )?;
+    settings_repository::set_value(connection, "used_recovery_code", &normalized_code)?;
     Ok(())
 }
 
