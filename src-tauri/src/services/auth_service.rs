@@ -1,7 +1,6 @@
 use crate::errors::{AppError, AppResult};
 use crate::repositories::user_repository;
 use crate::security;
-use crate::repositories::settings_repository;
 use rusqlite::{params, Connection};
 
 #[derive(Debug, serde::Deserialize)]
@@ -20,7 +19,7 @@ pub struct AuthenticatedUser {
     pub role: String,
 }
 
-pub fn ensure_default_admin(connection: &Connection) -> AppResult<()> {
+pub fn ensure_default_admin(_connection: &Connection) -> AppResult<()> {
     // The first admin is created by the first-run setup screen. Never create a
     // predictable default password here.
     Ok(())
@@ -33,21 +32,30 @@ pub fn reset_admin_password(
     new_password: &str,
 ) -> AppResult<()> {
     if !crate::services::license_service::validate_recovery_code(machine_code, recovery_code) {
-        return Err(AppError::Validation("Invalid or expired recovery code.".to_string()));
+        return Err(AppError::Validation(
+            "Invalid or expired recovery code.".to_string(),
+        ));
     }
     let normalized_code = recovery_code
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
         .collect::<String>()
         .to_uppercase();
-    if settings_repository::get_value(connection, "used_recovery_code")?.as_deref()
-        == Some(normalized_code.as_str())
-    {
-        return Err(AppError::Validation("This recovery code has already been used.".to_string()));
+    let was_used: i64 = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM used_recovery_codes WHERE code = ?1)",
+        params![&normalized_code],
+        |row| row.get(0),
+    )?;
+    if was_used != 0 {
+        return Err(AppError::Validation(
+            "This recovery code has already been used.".to_string(),
+        ));
     }
     let password = new_password.trim();
     if password.len() < 6 {
-        return Err(AppError::Validation("Password must be at least 6 characters.".to_string()));
+        return Err(AppError::Validation(
+            "Password must be at least 6 characters.".to_string(),
+        ));
     }
     let (hash, salt) = security::hash_password(password)?;
     let updated = connection.execute(
@@ -55,13 +63,18 @@ pub fn reset_admin_password(
         params![hash, salt],
     )?;
     if updated == 0 {
-        return Err(AppError::Validation("Admin account has not been set up yet.".to_string()));
+        return Err(AppError::Validation(
+            "Admin account has not been set up yet.".to_string(),
+        ));
     }
     connection.execute(
         "INSERT INTO audit_logs (action, entity_type, description, created_at) VALUES ('PASSWORD_RESET', 'USER', 'Admin password reset using recovery code.', datetime('now'))",
         [],
     )?;
-    settings_repository::set_value(connection, "used_recovery_code", &normalized_code)?;
+    connection.execute(
+        "INSERT INTO used_recovery_codes (code, used_at) VALUES (?1, datetime('now'))",
+        params![normalized_code],
+    )?;
     Ok(())
 }
 
@@ -112,4 +125,40 @@ fn record_login(connection: &Connection, user_id: Option<i64>, success: bool) ->
         ],
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::reset_admin_password;
+    use crate::errors::AppError;
+    use crate::recovery_code::generate_recovery_code;
+    use crate::security;
+    use rusqlite::{params, Connection};
+
+    #[test]
+    fn each_recovery_code_can_be_redeemed_only_once() {
+        let connection = Connection::open_in_memory().expect("in-memory database opens");
+        connection
+            .execute_batch(include_str!("../../migrations/001_initial.sql"))
+            .expect("schema initializes");
+        let (hash, salt) = security::hash_password("initial-password").expect("password hashes");
+        connection
+            .execute(
+                "INSERT INTO users (username, password_hash, password_salt, role, created_at)
+                 VALUES ('admin', ?1, ?2, 'ADMIN', datetime('now'))",
+                params![hash, salt],
+            )
+            .expect("admin is created");
+
+        let machine_code = "2169F3-34E2DE-B3281F";
+        let code = generate_recovery_code(machine_code, [8, 7, 6, 5, 4, 3, 2, 1]);
+        reset_admin_password(&connection, machine_code, &code, "new-password")
+            .expect("first redemption succeeds");
+
+        let error = reset_admin_password(&connection, machine_code, &code, "another-password")
+            .expect_err("second redemption is rejected");
+        assert!(
+            matches!(error, AppError::Validation(message) if message.contains("already been used"))
+        );
+    }
 }

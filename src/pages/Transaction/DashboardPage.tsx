@@ -493,12 +493,24 @@ export function DashboardPage({ appDate, user, settings, onLogout }: Props) {
     return (
       <section className="page-shell wide-page">
         <div className="work-surface">
-          <div className="section-header"><h2>End Day Report</h2><button type="button" onClick={() => window.print()}>Print</button></div>
+          <div className="section-header"><h2>End Day Report</h2><button type="button" onClick={printEndDayReport}>Print</button></div>
           <div className="report-toolbar"><label>Report date<input type="date" value={reportDate} onChange={(event) => setReportDate(event.target.value)} /></label><button type="button" onClick={() => loadReport(reportDate)}>Load Report</button></div>
-          {dailyReport ? <><SummaryCards summary={dailyReport.summary} /><TransactionTable transactions={dailyReport.transactions} /></> : <div className="empty-state">Load a report date to view end-of-day totals.</div>}
+          {dailyReport ? <><p className="report-period">Reporting interval: {formatReportInterval(reportDate)}</p><SummaryCards summary={dailyReport.summary} /><EndDayTransactionTable transactions={dailyReport.transactions} /></> : <div className="empty-state">Load a report date to view end-of-day totals.</div>}
         </div>
       </section>
     );
+  }
+
+  function printEndDayReport() {
+    const originalTitle = document.title;
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener("afterprint", restoreTitle);
+    };
+
+    document.title = `End-Day-Report-${formatPrintFileTimestamp(new Date())}`;
+    window.addEventListener("afterprint", restoreTitle);
+    window.print();
   }
 
   function updateField(field: keyof CustomerFormState) {
@@ -517,7 +529,7 @@ function CustomerDetails({ customer }: { customer: Customer }) {
 
 function CustomerTable({ customers, onEdit }: { customers: Customer[]; onEdit: (customer: Customer) => void }) {
   if (customers.length === 0) return <div className="empty-state">No customers found.</div>;
-  return <div className="data-table"><div className="table-header customer-table-grid"><span>Customer</span><span>Mobile</span><span>Bank</span><span>Account</span><span>Address</span><span></span></div>{customers.map((customer) => <div className="table-row customer-table-grid" key={customer.id}><strong>{customer.fullName}<small>{customer.customerCode}</small></strong><span>{customer.mobileDisplay ?? "-"}</span><span>{customer.accounts[0]?.bankName ?? "-"}</span><span>{customer.accounts[0]?.accountDisplay ?? "-"}</span><span>{formatAddress(customer)}</span><button type="button" className="secondary-button" onClick={() => onEdit(customer)}>Edit</button></div>)}</div>;
+  return <div className="data-table"><div className="table-header customer-table-grid"><span>Customer</span><span>Mobile</span><span>Aadhaar</span><span>Bank</span><span>Account</span><span>Address</span><span></span></div>{customers.map((customer) => <div className="table-row customer-table-grid" key={customer.id}><strong>{customer.fullName}<small>{customer.customerCode}</small></strong><span>{customer.mobileDisplay ?? "-"}</span><span>{customer.aadhaarDisplay ?? "-"}</span><span>{customer.accounts[0]?.bankName ?? "-"}</span><span>{customer.accounts[0]?.accountDisplay ?? "-"}</span><span>{formatAddress(customer)}</span><button type="button" className="secondary-button" onClick={() => onEdit(customer)}>Edit</button></div>)}</div>;
 }
 
 function SummaryCards({ summary }: { summary: DailySummary }) {
@@ -526,7 +538,12 @@ function SummaryCards({ summary }: { summary: DailySummary }) {
 
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
   if (transactions.length === 0) return <div className="empty-state">No cash transactions found for this day.</div>;
-  return <div className="data-table"><div className="table-header transaction-table-grid"><span>Time</span><span>Transaction</span><span>Customer</span><span>Bank</span><span>Type</span><span>Amount</span></div>{transactions.map((transaction) => <div className="table-row transaction-table-grid" key={transaction.id}><span>{formatTime(transaction.transactionTimestamp)}</span><strong>{transaction.transactionNumber}<small>{transaction.remarks ?? ""}</small></strong><span>{transaction.customerName}<small>{transaction.mobileDisplay ?? ""}</small></span><span>{transaction.bankName}<small>{transaction.accountDisplay}</small></span><span className={transaction.transactionType === "DEPOSIT" ? "type-deposit" : "type-withdrawal"}>{transaction.transactionType === "DEPOSIT" ? "Deposit" : "Withdrawal"}</span><strong>{formatCurrency(transaction.amountPaise)}</strong></div>)}</div>;
+  return <div className="data-table"><div className="table-header transaction-table-grid"><span>Date &amp; Time</span><span>Transaction</span><span>Customer</span><span>Aadhaar</span><span>Bank</span><span>Type</span><span>Amount</span></div>{transactions.map((transaction) => <div className="table-row transaction-table-grid" key={transaction.id}><span>{formatDateTime(transaction.transactionTimestamp)}</span><strong>{transaction.transactionNumber}<small>{transaction.remarks ?? ""}</small></strong><span>{transaction.customerName}<small>{transaction.mobileDisplay ?? ""}</small></span><span>{transaction.aadhaarDisplay ?? "-"}</span><span>{transaction.bankName}<small>{transaction.accountDisplay}</small></span><span className={transaction.transactionType === "DEPOSIT" ? "type-deposit" : "type-withdrawal"}>{transaction.transactionType === "DEPOSIT" ? "Deposit" : "Withdrawal"}</span><strong>{formatCurrency(transaction.amountPaise)}</strong></div>)}</div>;
+}
+
+function EndDayTransactionTable({ transactions }: { transactions: Transaction[] }) {
+  if (transactions.length === 0) return <div className="empty-state">No cash transactions found for this day.</div>;
+  return <div className="data-table end-day-transaction-table"><div className="table-header end-day-transaction-table-grid"><span>Date &amp; Time</span><span>Customer</span><span>Mobile</span><span>Aadhaar</span><span>Bank</span><span>Account</span><span>Type</span><span>Amount</span></div>{transactions.map((transaction) => <div className="table-row end-day-transaction-table-grid" key={transaction.id}><span>{formatDateTime(transaction.transactionTimestamp)}</span><span>{transaction.customerName}</span><span>{transaction.mobileDisplay ?? "-"}</span><span>{transaction.aadhaarDisplay ?? "-"}</span><span>{shortenBankName(transaction.bankName)}</span><span>{transaction.accountDisplay ?? "-"}</span><span className={transaction.transactionType === "DEPOSIT" ? "type-deposit" : "type-withdrawal"}>{transaction.transactionType === "DEPOSIT" ? "Deposit" : "Withdrawal"}</span><strong>{formatCurrency(transaction.amountPaise)}</strong></div>)}</div>;
 }
 
 function toCustomerInput(values: CustomerFormValues): CustomerInput {
@@ -544,6 +561,34 @@ function getLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function formatReportInterval(dateValue: string) {
+  const formattedDate = formatDateForReport(dateValue);
+  return `${formattedDate}, 12:00 AM – ${formattedDate}, 11:59 PM`;
+}
+
+function formatDateForReport(dateValue: string) {
+  const [year, month, day] = dateValue.split("-");
+  if (!year || !month || !day) return dateValue;
+  return `${day}/${month}/${year}`;
+}
+
+function formatPrintFileTimestamp(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+}
+
+function shortenBankName(bankName: string) {
+  const normalized = bankName.trim().toLowerCase();
+  if (normalized === "punjab national bank") return "PNB";
+  if (normalized === "state bank of india" || normalized === "state bank india") return "SBI";
+  return bankName;
+}
+
 function formatAddress(customer: Customer) {
   const parts = [customer.addressLine, customer.city].filter(Boolean);
   return parts.length ? parts.join(", ") : "-";
@@ -553,7 +598,9 @@ function formatCurrency(paise: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
 }
 
-function formatTime(timestamp: string) {
-  const parts = timestamp.split(" ");
-  return parts[1]?.slice(0, 5) ?? timestamp;
+function formatDateTime(timestamp: string) {
+  const [date, time] = timestamp.split(" ");
+  const [year, month, day] = date?.split("-") ?? [];
+  const formattedDate = year && month && day ? `${day}/${month}/${year}` : date;
+  return time ? `${formattedDate} ${time.slice(0, 5)}` : timestamp;
 }

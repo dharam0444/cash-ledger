@@ -17,6 +17,7 @@ export function LoginPage({ dbStatus, onLogin, onSetupComplete }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [machineCode, setMachineCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,6 +33,7 @@ export function LoginPage({ dbStatus, onLogin, onSetupComplete }: Props) {
   async function openRecovery() {
     setShowRecovery(true);
     setError(null);
+    setSuccessMessage(null);
     const status = await invoke<LicenseStatus>("get_license_status");
     setMachineCode(status.machineCode);
   }
@@ -44,7 +46,8 @@ export function LoginPage({ dbStatus, onLogin, onSetupComplete }: Props) {
       setShowRecovery(false);
       setRecoveryCode("");
       setNewPassword("");
-      setError("Password reset successfully. You can now log in.");
+      setPassword("");
+      setSuccessMessage("Password reset successfully. You can now log in.");
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
@@ -77,6 +80,7 @@ export function LoginPage({ dbStatus, onLogin, onSetupComplete }: Props) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSuccessMessage(null);
 
     const parsed = loginSchema.safeParse({ username, password });
     if (!parsed.success) {
@@ -102,42 +106,47 @@ export function LoginPage({ dbStatus, onLogin, onSetupComplete }: Props) {
       <section className="login-panel sober-login-panel" aria-labelledby="login-title">
         <h1 id="login-title" className="sober-login-title">Cash Ledger</h1>
 
-        <form className="sober-login-form" onSubmit={handleSubmit}>
-          <label>
-            Username
-            <input
-              autoFocus
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </label>
-          <label>
-            Password
-            <input
-              autoComplete="current-password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+        {showRecovery ? (
+          <form className="sober-login-form recovery-panel" onSubmit={handleRecovery}>
+            <h2>Reset admin password</h2>
+            <p className="muted-text">Send this machine code to the administrator:</p>
+            <strong className="setup-code-box">{machineCode}</strong>
+            <label>Recovery code<input autoFocus required value={recoveryCode} onChange={e => setRecoveryCode(e.target.value.toUpperCase())} /></label>
+            <label>New password<input required minLength={6} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
+            {error ? <p className="form-error">{error}</p> : null}
+            <button className="sober-login-button" type="submit">Reset password</button>
+            <button type="button" className="text-button" onClick={() => { setShowRecovery(false); setError(null); }}>Back to login</button>
+          </form>
+        ) : (
+          <form className="sober-login-form" onSubmit={handleSubmit}>
+            <label>
+              Username
+              <input
+                autoFocus
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </label>
+            <label>
+              Password
+              <input
+                autoComplete="current-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
 
-          {error ? <p className="form-error">{error}</p> : null}
+            {error ? <p className="form-error">{error}</p> : null}
+            {successMessage ? <p className="success-note">{successMessage}</p> : null}
 
-          <button className="sober-login-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : "Login"}
-          </button>
-          <button type="button" className="text-button" onClick={() => void openRecovery()}>Forgot password?</button>
-        </form>
-
-        {showRecovery ? <form className="recovery-panel" onSubmit={handleRecovery}>
-          <h2>Reset admin password</h2>
-          <p>Send this machine code to the administrator:</p>
-          <strong className="setup-code-box">{machineCode}</strong>
-          <label>Recovery code<input required value={recoveryCode} onChange={e => setRecoveryCode(e.target.value.toUpperCase())} /></label>
-          <label>New password<input required minLength={6} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
-          <button className="sober-login-button" type="submit">Reset password</button>
-        </form> : null}
+            <button className="sober-login-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Signing in..." : "Login"}
+            </button>
+            <button type="button" className="text-button forgot-password-link" onClick={() => void openRecovery()}>Forgot password?</button>
+          </form>
+        )}
 
         <p className="login-version">v{dbStatus.schemaVersion}</p>
       </section>

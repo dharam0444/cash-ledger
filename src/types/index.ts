@@ -43,6 +43,7 @@ export type Customer = {
   fullName: string;
   mobileDisplay: string | null;
   mobileMasked: string | null;
+  aadhaarDisplay: string | null;
   aadhaarMasked: string | null;
   addressLine: string | null;
   city: string | null;
@@ -75,6 +76,7 @@ export type Transaction = {
   customerName: string;
   mobileDisplay: string | null;
   mobileMasked: string | null;
+  aadhaarDisplay: string | null;
   bankName: string;
   accountMasked: string;
   accountDisplay: string;

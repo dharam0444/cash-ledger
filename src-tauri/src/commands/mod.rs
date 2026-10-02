@@ -35,7 +35,12 @@ pub fn reset_admin_password(
     input: PasswordResetInput,
 ) -> AppResult<()> {
     let connection = database.lock()?;
-    auth_service::reset_admin_password(&connection, &input.machine_code, &input.recovery_code, &input.new_password)
+    auth_service::reset_admin_password(
+        &connection,
+        &input.machine_code,
+        &input.recovery_code,
+        &input.new_password,
+    )
 }
 
 #[tauri::command]

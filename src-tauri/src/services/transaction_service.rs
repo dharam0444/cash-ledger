@@ -30,6 +30,7 @@ pub struct TransactionView {
     pub customer_name: String,
     pub mobile_display: Option<String>,
     pub mobile_masked: Option<String>,
+    pub aadhaar_display: Option<String>,
     pub bank_name: String,
     pub account_display: String,
     pub account_masked: String,
@@ -257,7 +258,7 @@ fn list_transactions_between(
 fn transaction_sql(where_clause: &str) -> String {
     format!(
         "SELECT t.id, t.transaction_number, t.customer_id, c.full_name, c.mobile_display,
-                b.name, a.account_number_last4, a.account_number_encrypted, t.transaction_type,
+                c.aadhaar_encrypted, b.name, a.account_number_last4, a.account_number_encrypted, t.transaction_type,
                 t.amount_paise, t.transaction_timestamp, t.remarks, t.status
          FROM transactions t
          JOIN customers c ON c.id = t.customer_id
@@ -269,8 +270,9 @@ fn transaction_sql(where_clause: &str) -> String {
 
 fn map_transaction(row: &rusqlite::Row<'_>, secret: &str) -> AppResult<TransactionView> {
     let mobile: Option<String> = row.get(4)?;
-    let account_last4: String = row.get(6)?;
-    let encrypted_account: Vec<u8> = row.get(7)?;
+    let encrypted_aadhaar: Option<Vec<u8>> = row.get(5)?;
+    let account_last4: String = row.get(7)?;
+    let encrypted_account: Vec<u8> = row.get(8)?;
     let account_display = security::decrypt_sensitive(secret, &encrypted_account)
         .unwrap_or_else(|_| format!("XXXXXXXX{}", account_last4));
     Ok(TransactionView {
@@ -280,14 +282,17 @@ fn map_transaction(row: &rusqlite::Row<'_>, secret: &str) -> AppResult<Transacti
         customer_name: row.get(3)?,
         mobile_masked: mobile.as_deref().map(mask_mobile),
         mobile_display: mobile,
-        bank_name: row.get(5)?,
+        aadhaar_display: encrypted_aadhaar
+            .as_deref()
+            .and_then(|value| security::decrypt_sensitive(secret, value).ok()),
+        bank_name: row.get(6)?,
         account_masked: format!("XXXXXXXX{}", account_last4),
         account_display,
-        transaction_type: row.get(8)?,
-        amount_paise: row.get(9)?,
-        transaction_timestamp: row.get(10)?,
-        remarks: row.get(11)?,
-        status: row.get(12)?,
+        transaction_type: row.get(9)?,
+        amount_paise: row.get(10)?,
+        transaction_timestamp: row.get(11)?,
+        remarks: row.get(12)?,
+        status: row.get(13)?,
     })
 }
 

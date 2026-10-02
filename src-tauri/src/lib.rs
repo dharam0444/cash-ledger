@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod errors;
+pub mod recovery_code;
 mod repositories;
 mod security;
 mod services;
