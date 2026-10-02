@@ -130,13 +130,7 @@ pub fn machine_code() -> String {
 }
 
 pub fn validate_recovery_code(machine: &str, code: &str) -> bool {
-    let mut hasher = Sha256::new();
-    hasher.update(VENDOR_LICENSE_SECRET.as_bytes());
-    hasher.update(b"|RECOVERY|");
-    hasher.update(machine.trim().to_uppercase().as_bytes());
-    let hex = hex::encode(hasher.finalize()).to_uppercase();
-    let expected = format!("{}-{}-{}-{}", &hex[0..8], &hex[8..16], &hex[16..24], &hex[24..32]);
-    normalize_license(code) == normalize_license(&expected)
+    crate::recovery_code::validate_recovery_code(machine, code)
 }
 
 fn normalize_license(value: &str) -> String {

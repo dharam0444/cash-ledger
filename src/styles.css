@@ -69,13 +69,15 @@ small { display: block; color: #686358; font-weight: 500; }
 .summary-grid strong { font-size: 1.25rem; }
 
 .report-toolbar { display: grid; grid-template-columns: minmax(180px, 260px) auto; gap: 12px; align-items: end; justify-content: start; }
+.report-period { color: #5e5a51; font-size: 0.92rem; font-weight: 650; }
 .data-table { display: grid; border: 1px solid #d5d0c3; border-radius: 8px; overflow: hidden; }
 .table-header, .table-row { display: grid; gap: 10px; align-items: center; padding: 12px 14px; }
 .table-header { color: #fffdf8; background: #17211a; font-weight: 700; }
 .table-row { min-height: 58px; border-top: 1px solid #e5dfd1; background: #fffdf8; }
 .table-row:nth-child(odd) { background: #faf7ef; }
-.customer-table-grid { grid-template-columns: 1.1fr 0.7fr 0.9fr 0.8fr 1.1fr auto; }
-.transaction-table-grid { grid-template-columns: 0.55fr 1.1fr 1fr 1fr 0.75fr 0.75fr; }
+.customer-table-grid { grid-template-columns: 1.05fr 0.8fr 0.9fr 0.8fr 0.9fr 1.05fr auto; }
+.transaction-table-grid { grid-template-columns: 0.85fr 1.05fr 0.95fr 0.9fr 0.9fr 0.55fr 0.7fr; }
+.end-day-transaction-table-grid { grid-template-columns: 1.05fr 1.2fr 0.95fr 1fr 0.42fr 1.15fr 0.7fr 0.85fr; }
 .type-deposit { color: #17633d; font-weight: 800; }
 .type-withdrawal { color: #9b3328; font-weight: 800; }
 
@@ -179,11 +181,33 @@ small { display: block; color: #686358; font-weight: 500; }
   }
 
   .transaction-table-grid {
-    grid-template-columns: 0.45fr 1.05fr 1.05fr 1.05fr 0.55fr 0.7fr !important;
+    grid-template-columns: 0.8fr 1fr 0.9fr 0.95fr 0.9fr 0.5fr 0.65fr !important;
+  }
+
+  .end-day-transaction-table {
+    font-size: 8px;
+  }
+
+  .end-day-transaction-table-grid {
+    grid-template-columns: 1.05fr 1.2fr 0.95fr 1fr 0.42fr 1.15fr 0.7fr 0.85fr !important;
+    gap: 2px !important;
+  }
+
+  .end-day-transaction-table .table-header,
+  .end-day-transaction-table .table-row {
+    padding: 2px 3px !important;
+    white-space: nowrap;
+  }
+
+  .end-day-transaction-table .table-row span,
+  .end-day-transaction-table .table-row strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .customer-table-grid {
-    grid-template-columns: 1.15fr 0.75fr 1fr 0.95fr 1.2fr 0fr !important;
+    grid-template-columns: 1fr 0.7fr 0.85fr 0.75fr 0.85fr 1fr 0fr !important;
   }
 
   .customer-table-grid button {
@@ -1009,4 +1033,41 @@ input:-webkit-autofill:active {
   .page-shell {
     margin-top: 22px;
   }
+}
+
+/* Login recovery link and reset-only state */
+.text-button,
+.forgot-password-link {
+  width: auto;
+  min-height: auto;
+  justify-self: center;
+  margin-top: 0;
+  border: 0;
+  padding: 2px 4px;
+  color: #2F75B5;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.92rem;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.text-button:hover:not(:disabled),
+.forgot-password-link:hover:not(:disabled) {
+  color: #254765;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.recovery-panel h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.recovery-panel .setup-code-box {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
 }

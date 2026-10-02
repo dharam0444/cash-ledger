@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS application_settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS used_recovery_codes (
+    code TEXT PRIMARY KEY,
+    used_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS backup_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     backup_path TEXT NOT NULL,

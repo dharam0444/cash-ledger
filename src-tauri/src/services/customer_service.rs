@@ -31,6 +31,7 @@ pub struct CustomerView {
     pub full_name: String,
     pub mobile_display: Option<String>,
     pub mobile_masked: Option<String>,
+    pub aadhaar_display: Option<String>,
     pub aadhaar_masked: Option<String>,
     pub address_line: Option<String>,
     pub city: Option<String>,
@@ -331,7 +332,7 @@ pub fn search_customer(
 pub fn get_customer(connection: &Connection, customer_id: i64) -> AppResult<CustomerView> {
     let secret = get_or_create_app_secret_readonly(connection)?;
     let mut customer = connection.query_row(
-        "SELECT id, customer_code, full_name, mobile_display, aadhaar_last4,
+        "SELECT id, customer_code, full_name, mobile_display, aadhaar_last4, aadhaar_encrypted,
                 address_line, city, state, pin_code
          FROM customers
          WHERE id = ?1 AND is_active = 1",
@@ -339,17 +340,22 @@ pub fn get_customer(connection: &Connection, customer_id: i64) -> AppResult<Cust
         |row| {
             let mobile_display: Option<String> = row.get(3)?;
             let aadhaar_last4: Option<String> = row.get(4)?;
+            let encrypted_aadhaar: Option<Vec<u8>> = row.get(5)?;
+            let aadhaar_display = encrypted_aadhaar
+                .as_deref()
+                .and_then(|value| security::decrypt_sensitive(&secret, value).ok());
             Ok(CustomerView {
                 id: row.get(0)?,
                 customer_code: row.get(1)?,
                 full_name: row.get(2)?,
                 mobile_masked: mobile_display.as_deref().map(mask_mobile),
                 mobile_display,
+                aadhaar_display,
                 aadhaar_masked: aadhaar_last4.map(|value| format!("XXXX XXXX {}", value)),
-                address_line: row.get(5)?,
-                city: row.get(6)?,
-                state: row.get(7)?,
-                pin_code: row.get(8)?,
+                address_line: row.get(6)?,
+                city: row.get(7)?,
+                state: row.get(8)?,
+                pin_code: row.get(9)?,
                 accounts: Vec::new(),
             })
         },
